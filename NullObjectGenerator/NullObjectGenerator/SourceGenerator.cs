@@ -171,8 +171,7 @@ namespace NullObjectGenerator
                     sb.Append($@"
                 get 
                 {{ ");
-                    AppendLog(sb, data.LogType, $@"
-                    {proprety.Name} is null. return default value.");
+                    AppendLog(sb, data.LogType, $@"{proprety.Name} is null. return default value.");
                     sb.Append($@"
                     return default;
                 }}");
@@ -183,8 +182,7 @@ namespace NullObjectGenerator
                 set
                 {{
                        ");
-                    AppendLog(sb, data.LogType, $@"
-                    {proprety.Name} is null. do nothing.");
+                    AppendLog(sb, data.LogType, $@"{proprety.Name} is null. do nothing.");
                     sb.Append(@"
                 }");
                 }
@@ -200,8 +198,7 @@ namespace NullObjectGenerator
             {accessiblity} {method.ReturnType} {method.Name}({string.Join(",", method.Parameters.Select(x => $"{x.Type} {x.Name}"))})
             {{");
                 
-                AppendLog(sb, data.LogType, $@"
-                {method.Name} is null. do nothing.");
+                AppendLog(sb, data.LogType, $@"{method.Name} is null. do nothing.");
 
                 if(method.ReturnType.Name == "UniTask")
                 {
@@ -271,15 +268,17 @@ namespace NullObjectGenerator
 
                     }
                 }
+
+                bool attributeNotExists =  target.attr is null || target.attr.ArgumentList is null ||
+                                       target.attr.ArgumentList.Arguments.Count == 0;
                 
-                var args = target.attr.ArgumentList.Arguments;
-                if (args.Count == 0)
+                if (attributeNotExists)
                 {
                     data.LogType = LogType.None;
                 }
                 else
                 {
-                    var arg = args[0];
+                    var arg = target.attr.ArgumentList.Arguments[0];
                     var expr = arg.Expression;
                     var parsed = Enum.ToObject(typeof(LogType), model.GetConstantValue(expr).Value);
                     data.LogType = (LogType)parsed;
@@ -329,14 +328,16 @@ namespace NullObjectGenerator
 
                 }
 
-                var args = target.attr.ArgumentList.Arguments;
-                if (args.Count == 0)
+                bool attributeNotExists =  target.attr is null || target.attr.ArgumentList is null ||
+                                           target.attr.ArgumentList.Arguments.Count == 0;
+                
+                if (attributeNotExists)
                 {
                     data.LogType = LogType.None;
                 }
                 else
                 {
-                    var arg = args[0];
+                    var arg = target.attr.ArgumentList.Arguments[0];
                     var expr = arg.Expression;
                     var parsed = Enum.ToObject(typeof(LogType), model.GetConstantValue(expr).Value);
                     data.LogType = (LogType)parsed;
@@ -353,17 +354,17 @@ namespace NullObjectGenerator
             if (logType.HasFlag(LogType.DebugLog))
             {
                 sb.Append($@"
-                    UnityEngine.Debug.Log(""{message}"");");
+                    UnityEngine.Debug.Log(@""{message}"");");
             }
             if (logType.HasFlag(LogType.DebugLogErr))
             {
                 sb.Append($@"
-                    UnityEngine.Debug.LogError(""{message}"");");
+                    UnityEngine.Debug.LogError(@""{message}"");");
             }
             if (logType.HasFlag(LogType.ThrowException))
             {
                 sb.Append($@"
-                    throw new Exception(""{message}"");");
+                    throw new Exception(@""{message}"");");
             }
 
         }
@@ -439,23 +440,21 @@ namespace NullObjectGenerator
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
-                if (syntaxNode is ClassDeclarationSyntax  cla && cla.AttributeLists.Count > 0)
+                if (syntaxNode is ClassDeclarationSyntax  cla)
                 {
                     var attr = cla.AttributeLists.SelectMany(x => x.Attributes)
                         .FirstOrDefault(x => x.Name.ToString() is "InheritsToNullObj"|| x.Name.ToString() is "InheritsToNullObjAttribute");
-                    if (attr != null)
-                    {
-                        targetClasses.Add((cla,attr));
-                    }
+
+                    if(attr != null) targetClasses.Add((cla,attr));
+
                 }
-                else if (syntaxNode is InterfaceDeclarationSyntax inte && inte.AttributeLists.Count > 0)
+                else if (syntaxNode is InterfaceDeclarationSyntax inte)
                 {
                     var attr = inte.AttributeLists.SelectMany(x => x.Attributes)
                         .FirstOrDefault(x => x.Name.ToString() is "InterfaceToNullObj"|| x.Name.ToString() is "InterfaceToNullObjAttribute");
-                    if (attr != null)
-                    {
-                        targetInterfaces.Add((inte,attr));
-                    }
+
+                    if(attr != null) targetInterfaces.Add((inte,attr));
+                    
                 }
             }
         }
