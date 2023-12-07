@@ -29,10 +29,20 @@ namespace NullObjectGenerator
                     Inherited = false, AllowMultiple = false)]
     sealed class NullObjAttribute : Attribute
     {
-    
-        public NullObjAttribute()
+        public LogType LogType { get; }
+        public NullObjAttribute( LogType logType = LogType.None)
         {
+            LogType = logType;
         }
+    }
+
+    [Flags]
+    internal enum LogType
+    {
+        None = 0,
+        DebugLog = 1,
+        DebugLogErr = 1 << 1,
+        ThrowException = 1 << 2,
     }
 }
 ";            
@@ -107,11 +117,20 @@ namespace NullObjectGenerator
                 {{ ");
                 if (proprety.GetMethod != null)
                 {
-                    sb.Append($@"get; ");
+                    sb.Append($@"get 
+                        {{ ");
+                    AppendLog(sb, data.LogType, $@"{proprety.Name} is null. return default value.");
+                    sb.Append($@"
+                        return default;
+                        }}");
                 }
                 if (proprety.SetMethod != null)
                 {
-                    sb.Append($@"set; ");
+                    sb.Append($@"set{{
+                       ");
+                    AppendLog(sb, data.LogType, $@"{proprety.Name} is null. do nothing.");
+                    sb.Append(@"
+                        }");
                 }
                 sb.Append($@"
                 }}");
@@ -124,6 +143,8 @@ namespace NullObjectGenerator
                 sb.Append($@"
                 {accessiblity} {method.ReturnType} {method.Name}({string.Join(",", method.Parameters.Select(x => $"{x.Type} {x.Name}"))})
                 {{");
+                
+                AppendLog(sb, data.LogType, $@"{method.Name} is null. do nothing.");
 
                 if(method.ReturnType.Name == "UniTask")
                 {
@@ -154,9 +175,11 @@ namespace NullObjectGenerator
         private List<ClassData> GetMembers(SyntaxReceiver receiver , GeneratorExecutionContext context)
         {
             List<ClassData> result = new List<ClassData>();
-            
-            foreach (var classSyntax in receiver.classes)
+
+            foreach (var target in receiver.targets)
             {
+                var classSyntax = target.cla;
+                
                 // SemanticModelを取得
                 SemanticModel model = context.Compilation.GetSemanticModel(classSyntax.SyntaxTree);
 
@@ -192,10 +215,35 @@ namespace NullObjectGenerator
                     }
                 }
                 
+                var arg = target.attr.ArgumentList.Arguments[0];
+                var expr = arg.Expression;
+                var parsed = Enum.ToObject(typeof(LogType), model.GetConstantValue(expr).Value);
+                data.LogType = (LogType)parsed;
+                
                 result.Add(data);
             }
 
             return result;
+        }
+
+        private void AppendLog( StringBuilder sb, LogType logType , string message)
+        {
+            if (logType.HasFlag(LogType.DebugLog))
+            {
+                sb.Append($@"
+                    UnityEngine.Debug.Log(""{message}"");");
+            }
+            if (logType.HasFlag(LogType.DebugLogErr))
+            {
+                sb.Append($@"
+                    UnityEngine.Debug.LogError(""{message}"");");
+            }
+            if (logType.HasFlag(LogType.ThrowException))
+            {
+                sb.Append($@"
+                    throw new Exception(""{message}"");");
+            }
+
         }
         
 
@@ -230,10 +278,12 @@ namespace NullObjectGenerator
         public class ClassData
         {
             public ClassDeclarationSyntax classDeclarationSyntax;
+            public LogType LogType;
             public List<IMethodSymbol> methods =new List<IMethodSymbol>();
             public List<IPropertySymbol> properties = new List<IPropertySymbol>();
             public List<INamedTypeSymbol> interfaces = new List<INamedTypeSymbol>();
-
+            
+            
             public ClassData(ClassDeclarationSyntax classDeclarationSyntax)
             {
                 this.classDeclarationSyntax = classDeclarationSyntax;
@@ -243,17 +293,17 @@ namespace NullObjectGenerator
 
         class SyntaxReceiver : ISyntaxReceiver
         {
-            public List<ClassDeclarationSyntax> classes { get; } = new List<ClassDeclarationSyntax>();
+            public List<(ClassDeclarationSyntax cla , AttributeSyntax attr)> targets { get; } = new List<(ClassDeclarationSyntax cla , AttributeSyntax attr)>();
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
-                if (syntaxNode is ClassDeclarationSyntax  s && s.AttributeLists.Count > 0)
+                if (syntaxNode is ClassDeclarationSyntax  cla && cla.AttributeLists.Count > 0)
                 {
-                    var attr = s.AttributeLists.SelectMany(x => x.Attributes)
+                    var attr = cla.AttributeLists.SelectMany(x => x.Attributes)
                         .FirstOrDefault(x => x.Name.ToString() is "NullObj"|| x.Name.ToString() is "NullObjAttribute");
                     if (attr != null)
                     {
-                        classes.Add((s));
+                        targets.Add((cla,attr));
                     }
                 }
             }

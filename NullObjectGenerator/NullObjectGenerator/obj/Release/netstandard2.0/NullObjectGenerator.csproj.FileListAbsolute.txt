@@ -1,0 +1,10 @@
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\bin\Release\netstandard2.0\NullObjectGenerator.deps.json
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\bin\Release\netstandard2.0\NullObjectGenerator.dll
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\bin\Release\netstandard2.0\NullObjectGenerator.pdb
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\obj\Release\netstandard2.0\NullObjectGenerator.csproj.AssemblyReference.cache
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\obj\Release\netstandard2.0\NullObjectGenerator.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\obj\Release\netstandard2.0\NullObjectGenerator.AssemblyInfoInputs.cache
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\obj\Release\netstandard2.0\NullObjectGenerator.AssemblyInfo.cs
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\obj\Release\netstandard2.0\NullObjectGenerator.csproj.CoreCompileInputs.cache
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\obj\Release\netstandard2.0\NullObjectGenerator.dll
+C:\Users\tamed\Documents\project\NullObjectGenerator\NullObjectGenerator\NullObjectGenerator\obj\Release\netstandard2.0\NullObjectGenerator.pdb
