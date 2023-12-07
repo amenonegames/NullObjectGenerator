@@ -30,7 +30,7 @@ namespace NullObjectGenerator
     sealed class InheritsToNullObjAttribute : Attribute
     {
         public LogType LogType { get; }
-        public InheritToNullObjAttribute( LogType logType = LogType.None)
+        public InheritsToNullObjAttribute( LogType logType = LogType.None)
         {
             LogType = logType;
         }
