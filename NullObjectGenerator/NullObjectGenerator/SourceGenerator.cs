@@ -272,10 +272,18 @@ namespace NullObjectGenerator
                     }
                 }
                 
-                var arg = target.attr.ArgumentList.Arguments[0];
-                var expr = arg.Expression;
-                var parsed = Enum.ToObject(typeof(LogType), model.GetConstantValue(expr).Value);
-                data.LogType = (LogType)parsed;
+                var args = target.attr.ArgumentList.Arguments;
+                if (args.Count == 0)
+                {
+                    data.LogType = LogType.None;
+                }
+                else
+                {
+                    var arg = args[0];
+                    var expr = arg.Expression;
+                    var parsed = Enum.ToObject(typeof(LogType), model.GetConstantValue(expr).Value);
+                    data.LogType = (LogType)parsed;
+                }
                 
                 result.Add(data);
             }
