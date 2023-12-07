@@ -27,10 +27,21 @@ namespace NullObjectGenerator
 {
     [AttributeUsage(AttributeTargets.Class,
                     Inherited = false, AllowMultiple = false)]
-    sealed class NullObjAttribute : Attribute
+    sealed class InheritToNullObjAttribute : Attribute
     {
         public LogType LogType { get; }
-        public NullObjAttribute( LogType logType = LogType.None)
+        public InheritToNullObjAttribute( LogType logType = LogType.None)
+        {
+            LogType = logType;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Interface,
+                    Inherited = false, AllowMultiple = false)]
+    sealed class InterfaceToNullObjAttribute : Attribute
+    {
+        public LogType LogType { get; }
+        public InterfaceToNullObjAttribute( LogType logType = LogType.None)
         {
             LogType = logType;
         }
@@ -59,27 +70,42 @@ namespace NullObjectGenerator
             // シンタックスレシーバを取得
             var receiver = context.SyntaxReceiver as SyntaxReceiver;
             if (receiver == null) return;
-            var result = GetMembers(receiver, context);
-
+            var classResult = GetClassDatas(receiver, context);
+            var interfaceResult = getInterfaceDatas(receiver, context);
             
-            foreach (var data in result)
+            foreach (var data in classResult)
             {
                 var type = data.classDeclarationSyntax;
                 var typeSymbol = context.Compilation.GetSemanticModel(type.SyntaxTree).GetDeclaredSymbol(type);
                 if (typeSymbol == null) throw new Exception("can not get typeSymbol.");
 
-                var source = SourceText.From(GenerateType( typeSymbol , data),Encoding.UTF8);
+                var source = SourceText.From(GenerateClassForInherits( typeSymbol , data),Encoding.UTF8);
                 
                 var filename =
-                    $"{typeSymbol.Name}AsNullObject.cs";
+                    $"{typeSymbol.Name}AsNullObject.g.cs";
                     
                 context.AddSource(filename, source);
             }
+
+            foreach (var data in interfaceResult)
+            {
+                var type = data.interfaceDeclarationSyntax;
+                var typeSymbol = context.Compilation.GetSemanticModel(type.SyntaxTree).GetDeclaredSymbol(type);
+                if (typeSymbol == null) throw new Exception("can not get typeSymbol.");
+
+                var source = SourceText.From(GenerateClassForInterface( typeSymbol , data),Encoding.UTF8);
+                
+                var filename =
+                    $"{typeSymbol.Name}AsNullObject.g.cs";
+                    
+                context.AddSource(filename, source);
+            }
+            
         }
 
-        private string GenerateType(ISymbol symbol, ClassData data)
+        private string GenerateClassForInherits(ISymbol symbol, ClassData data)
         {
-            
+
             List<string> allUsings = new List<string>();
             foreach (var iDataInterface in data.interfaces)
             {
@@ -87,6 +113,27 @@ namespace NullObjectGenerator
             }
 
             var usings = allUsings.Distinct();
+            return GenerateClass(symbol, data , usings);
+        }
+        
+        private string GenerateClassForInterface(ISymbol symbol, InterfaceData data)
+        {
+
+            // SyntaxTreeのルートを取得（CompilationUnitSyntax）
+            var root = data.interfaceDeclarationSyntax.SyntaxTree.GetRoot() as CompilationUnitSyntax;
+            if (root == null)
+            {
+                return "";
+            }
+
+            // usingディレクティブを取得
+            var usings =  root.Usings.Select(usingDirective => usingDirective.Name.ToString());
+
+            return GenerateClass(symbol, data , usings);
+        }
+        
+        private string GenerateClass(ISymbol symbol, IImplementationData data , IEnumerable<string> usings)
+        {
             
 
             var classAccessiblity = symbol.DeclaredAccessibility.ToString().ToLower();
@@ -108,7 +155,7 @@ namespace NullObjectGenerator
             sb.Append(namespaceName);
             sb.Append(classDeclaration);
 
-            foreach (var proprety in data.properties)
+            foreach (var proprety in data.Properties)
             {
                 var accessiblity = proprety.DeclaredAccessibility.ToString().ToLower();
                 
@@ -137,7 +184,7 @@ namespace NullObjectGenerator
             }
             
 
-            foreach (var method in data.methods)
+            foreach (var method in data.Methods)
             {
                 var accessiblity = method.DeclaredAccessibility.ToString().ToLower();
                 sb.Append($@"
@@ -172,11 +219,11 @@ namespace NullObjectGenerator
             return sb.ToString();
         }
 
-        private List<ClassData> GetMembers(SyntaxReceiver receiver , GeneratorExecutionContext context)
+        private List<ClassData> GetClassDatas(SyntaxReceiver receiver , GeneratorExecutionContext context)
         {
             List<ClassData> result = new List<ClassData>();
 
-            foreach (var target in receiver.targets)
+            foreach (var target in receiver.targetClasses)
             {
                 var classSyntax = target.cla;
                 
@@ -202,12 +249,12 @@ namespace NullObjectGenerator
                             
                             case IMethodSymbol method when !method.IsPropertyAccessor():
                                 // メソッドの処理
-                                data.methods.Add(method);
+                                data.Methods.Add(method);
                                 break;
 
                             case IPropertySymbol property:
                                 // プロパティの処理
-                                data.properties.Add(property);
+                                data.Properties.Add(property);
                                 break;
                             
                         }
@@ -222,10 +269,60 @@ namespace NullObjectGenerator
                 
                 result.Add(data);
             }
-
+            
             return result;
         }
 
+        private List<InterfaceData> getInterfaceDatas(SyntaxReceiver receiver , GeneratorExecutionContext context)
+        {
+            List<InterfaceData> result = new List<InterfaceData>();
+
+            foreach (var target in receiver.targetInterfaces)
+            {
+                var interfaceSyntax = target.inte;
+                
+                // SemanticModelを取得
+                SemanticModel model = context.Compilation.GetSemanticModel(interfaceSyntax.SyntaxTree);
+
+                // クラスのシンボルを取得
+                INamedTypeSymbol interfaceSymbol = model.GetDeclaredSymbol(interfaceSyntax) as INamedTypeSymbol;
+                if (interfaceSymbol == null) continue;
+
+                InterfaceData data = new InterfaceData(interfaceSyntax);
+
+                // インターフェースのメンバーを取得
+                foreach (var member in interfaceSymbol.GetMembers())
+                {
+
+                    switch (member)
+                    {
+                        
+                        case IMethodSymbol method when !method.IsPropertyAccessor():
+                            // メソッドの処理
+                            data.Methods.Add(method);
+                            break;
+
+                        case IPropertySymbol property:
+                            // プロパティの処理
+                            data.Properties.Add(property);
+                            break;
+                        
+                    }
+
+                }
+                
+                
+                var arg = target.attr.ArgumentList.Arguments[0];
+                var expr = arg.Expression;
+                var parsed = Enum.ToObject(typeof(LogType), model.GetConstantValue(expr).Value);
+                data.LogType = (LogType)parsed;
+                
+                result.Add(data);
+            }
+            
+            return result;
+        }
+        
         private void AppendLog( StringBuilder sb, LogType logType , string message)
         {
             if (logType.HasFlag(LogType.DebugLog))
@@ -275,12 +372,12 @@ namespace NullObjectGenerator
             return usingDirectives;
         }
         
-        public class ClassData
+        public class ClassData : IImplementationData
         {
             public ClassDeclarationSyntax classDeclarationSyntax;
-            public LogType LogType;
-            public List<IMethodSymbol> methods =new List<IMethodSymbol>();
-            public List<IPropertySymbol> properties = new List<IPropertySymbol>();
+            public LogType LogType { get; set; }
+            public List<IMethodSymbol> Methods { get; } =new List<IMethodSymbol>();
+            public List<IPropertySymbol> Properties { get; }= new List<IPropertySymbol>();
             public List<INamedTypeSymbol> interfaces = new List<INamedTypeSymbol>();
             
             
@@ -289,21 +386,50 @@ namespace NullObjectGenerator
                 this.classDeclarationSyntax = classDeclarationSyntax;
             } 
         }
+        
+        public class InterfaceData : IImplementationData
+        {
+            public InterfaceDeclarationSyntax interfaceDeclarationSyntax;
+            public LogType LogType { get; set; }
+            public List<IMethodSymbol> Methods { get; } =new List<IMethodSymbol>();
+            public List<IPropertySymbol> Properties { get; }= new List<IPropertySymbol>();
+            
+            public InterfaceData(InterfaceDeclarationSyntax interfaceDeclarationSyntax)
+            {
+                this.interfaceDeclarationSyntax = interfaceDeclarationSyntax;
+            } 
+        }
 
+        public interface IImplementationData
+        {
+            List<IMethodSymbol> Methods { get; } 
+            List<IPropertySymbol> Properties { get; }
+            LogType LogType { get; set; }
+        }
 
         class SyntaxReceiver : ISyntaxReceiver
         {
-            public List<(ClassDeclarationSyntax cla , AttributeSyntax attr)> targets { get; } = new List<(ClassDeclarationSyntax cla , AttributeSyntax attr)>();
+            public List<(ClassDeclarationSyntax cla , AttributeSyntax attr)> targetClasses { get; } = new List<(ClassDeclarationSyntax cla , AttributeSyntax attr)>();
+            public List<(InterfaceDeclarationSyntax inte , AttributeSyntax attr)> targetInterfaces { get; } = new List<(InterfaceDeclarationSyntax inte , AttributeSyntax attr)>();
 
             public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
             {
                 if (syntaxNode is ClassDeclarationSyntax  cla && cla.AttributeLists.Count > 0)
                 {
                     var attr = cla.AttributeLists.SelectMany(x => x.Attributes)
-                        .FirstOrDefault(x => x.Name.ToString() is "NullObj"|| x.Name.ToString() is "NullObjAttribute");
+                        .FirstOrDefault(x => x.Name.ToString() is "InheritToNullObj"|| x.Name.ToString() is "InheritToNullObjAttribute");
                     if (attr != null)
                     {
-                        targets.Add((cla,attr));
+                        targetClasses.Add((cla,attr));
+                    }
+                }
+                else if (syntaxNode is InterfaceDeclarationSyntax inte && inte.AttributeLists.Count > 0)
+                {
+                    var attr = inte.AttributeLists.SelectMany(x => x.Attributes)
+                        .FirstOrDefault(x => x.Name.ToString() is "InterfaceToNullObj"|| x.Name.ToString() is "InterfaceToNullObjAttribute");
+                    if (attr != null)
+                    {
+                        targetInterfaces.Add((inte,attr));
                     }
                 }
             }
