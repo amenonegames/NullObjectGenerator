@@ -107,13 +107,16 @@ namespace NullObjectGenerator
         {
 
             List<string> allUsings = new List<string>();
+            List<string> interfaces = new List<string>();
             foreach (var iDataInterface in data.interfaces)
             {
                 allUsings.AddRange(GetUsingDirectives(iDataInterface));
+                interfaces.Add(iDataInterface.Name);
             }
 
             var usings = allUsings.Distinct();
-            return GenerateClass(symbol, data , usings);
+
+            return GenerateClass(symbol, data , usings, interfaces);
         }
         
         private string GenerateClassForInterface(ISymbol symbol, InterfaceData data)
@@ -128,21 +131,22 @@ namespace NullObjectGenerator
 
             // usingディレクティブを取得
             var usings =  root.Usings.Select(usingDirective => usingDirective.Name.ToString());
+            string[] interfaces = new[] { data.interfaceDeclarationSyntax.Identifier.ValueText };
 
-            return GenerateClass(symbol, data , usings);
+            return GenerateClass(symbol, data , usings , interfaces);
         }
         
-        private string GenerateClass(ISymbol symbol, IImplementationData data , IEnumerable<string> usings)
+        private string GenerateClass(ISymbol symbol, IImplementationData data , IEnumerable<string> usings , IEnumerable<string> interfaces)
         {
-            
-
             var classAccessiblity = symbol.DeclaredAccessibility.ToString().ToLower();
+            var interfacesStr = interfaces.Any() ? $": {string.Join(",", interfaces)}" : "";
             var namespaceName = symbol.ContainingNamespace.IsGlobalNamespace
                 ? ""
                 : $@"namespace {symbol.ContainingNamespace.ToDisplayString()}
 {{";
             var classDeclaration = $@"
-    {classAccessiblity} class {symbol.Name}AsNullObj
+    ///
+    {classAccessiblity} class {symbol.Name}AsNullObj {interfacesStr}
     {{
 ";
             var sb = new StringBuilder();
@@ -160,27 +164,32 @@ namespace NullObjectGenerator
                 var accessiblity = proprety.DeclaredAccessibility.ToString().ToLower();
                 
                 sb.Append($@"
-                {accessiblity} {proprety.Type} {proprety.Name} 
-                {{ ");
+            {accessiblity} {proprety.Type} {proprety.Name} 
+            {{ ");
                 if (proprety.GetMethod != null)
                 {
-                    sb.Append($@"get 
-                        {{ ");
-                    AppendLog(sb, data.LogType, $@"{proprety.Name} is null. return default value.");
                     sb.Append($@"
-                        return default;
-                        }}");
+                get 
+                {{ ");
+                    AppendLog(sb, data.LogType, $@"
+                    {proprety.Name} is null. return default value.");
+                    sb.Append($@"
+                    return default;
+                }}");
                 }
                 if (proprety.SetMethod != null)
                 {
-                    sb.Append($@"set{{
+                    sb.Append($@"
+                set
+                {{
                        ");
-                    AppendLog(sb, data.LogType, $@"{proprety.Name} is null. do nothing.");
+                    AppendLog(sb, data.LogType, $@"
+                    {proprety.Name} is null. do nothing.");
                     sb.Append(@"
-                        }");
+                }");
                 }
                 sb.Append($@"
-                }}");
+            }}");
             }
             
 
@@ -188,24 +197,25 @@ namespace NullObjectGenerator
             {
                 var accessiblity = method.DeclaredAccessibility.ToString().ToLower();
                 sb.Append($@"
-                {accessiblity} {method.ReturnType} {method.Name}({string.Join(",", method.Parameters.Select(x => $"{x.Type} {x.Name}"))})
-                {{");
+            {accessiblity} {method.ReturnType} {method.Name}({string.Join(",", method.Parameters.Select(x => $"{x.Type} {x.Name}"))})
+            {{");
                 
-                AppendLog(sb, data.LogType, $@"{method.Name} is null. do nothing.");
+                AppendLog(sb, data.LogType, $@"
+                {method.Name} is null. do nothing.");
 
                 if(method.ReturnType.Name == "UniTask")
                 {
                     sb.Append($@"
-                    return UniTask.CompletedTask;");
+                return UniTask.CompletedTask;");
                 }
                 else if(method.ReturnType.SpecialType != SpecialType.System_Void)
                 {
                     sb.Append($@"
-                    return default;");
+                return default;");
                 }
                 
                 sb.Append(@"
-                }");
+            }");
                 
             }
             
