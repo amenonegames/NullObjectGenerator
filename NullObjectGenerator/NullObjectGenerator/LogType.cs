@@ -8,6 +8,7 @@ namespace NullObjectGenerator
         None = 0,
         DebugLog = 1,
         DebugLogErr = 1 << 1,
-        ThrowException = 1 << 2,
+        DebugLogWarn = 1 << 2,
+        ThrowException = 1 << 3,
     }
 }
