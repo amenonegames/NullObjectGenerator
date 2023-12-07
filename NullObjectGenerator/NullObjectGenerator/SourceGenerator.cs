@@ -156,6 +156,11 @@ namespace NullObjectGenerator
                 sb.Append($@"using {ns};
 ");
             }
+            if(usings.Any(x => x == "System"))
+            {
+                sb.Append($@"using System;");
+            }
+            
             sb.Append(namespaceName);
             sb.Append(classDeclaration);
 
