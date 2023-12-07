@@ -156,7 +156,7 @@ namespace NullObjectGenerator
                 sb.Append($@"using {ns};
 ");
             }
-            if(usings.Any(x => x == "System"))
+            if(!usings.Any(x => x == "System"))
             {
                 sb.Append($@"using System;");
             }
