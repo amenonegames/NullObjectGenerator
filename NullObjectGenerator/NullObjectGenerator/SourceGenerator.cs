@@ -27,7 +27,7 @@ namespace NullObjectGenerator
 {
     [AttributeUsage(AttributeTargets.Class,
                     Inherited = false, AllowMultiple = false)]
-    sealed class InheritToNullObjAttribute : Attribute
+    sealed class InheritsToNullObjAttribute : Attribute
     {
         public LogType LogType { get; }
         public InheritToNullObjAttribute( LogType logType = LogType.None)
@@ -417,7 +417,7 @@ namespace NullObjectGenerator
                 if (syntaxNode is ClassDeclarationSyntax  cla && cla.AttributeLists.Count > 0)
                 {
                     var attr = cla.AttributeLists.SelectMany(x => x.Attributes)
-                        .FirstOrDefault(x => x.Name.ToString() is "InheritToNullObj"|| x.Name.ToString() is "InheritToNullObjAttribute");
+                        .FirstOrDefault(x => x.Name.ToString() is "InheritsToNullObj"|| x.Name.ToString() is "InheritsToNullObjAttribute");
                     if (attr != null)
                     {
                         targetClasses.Add((cla,attr));
