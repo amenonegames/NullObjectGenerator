@@ -26,7 +26,7 @@ using NullObjectGenerator;
 ```
 
 また、アトリビュートのコンストラクタを指定すると、
-ログの出し分けが可能です。
+アクセスされた際にログの出力が可能です。
 
 ```csharp
     public enum LogType
